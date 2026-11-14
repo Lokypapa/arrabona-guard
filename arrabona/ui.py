@@ -1585,8 +1585,10 @@ class GuardApp:
             tk.Label(tart, text=txt, justify="left", anchor="w", wraplength=420,
                      font=kw.pop("font", ("Segoe UI", 10)), fg=kw.pop("fg", COLORS['text']),
                      bg=COLORS['panel'], **kw).pack(anchor="w", fill=tk.X, pady=(0, 4))
-        sor("Ingyenes, nyílt forrású PC-védelmi program Windowsra.")
-        sor("Licenc: MIT  -  garancia nélkül, a Windows Defender mellé.", fg=COLORS['text_soft'])
+        sor("Ingyenes PC-védelmi program Windowsra, nyilvános forráskóddal.")
+        sor("© 2026 Lokypapa - minden jog fenntartva. Ingyenesen használható; a kód másolása,\n"
+            "módosítása, terjesztése csak engedéllyel. Garancia nélkül, a Windows Defender mellé.",
+            fg=COLORS['text_soft'], font=("Segoe UI", 9))
         link = tk.Label(tart, text="github.com/%s" % GITHUB_REPO, font=("Segoe UI", 10, "underline"),
                         fg=COLORS['link'], bg=COLORS['panel'], cursor="hand2")
         link.pack(anchor="w", pady=(4, 2))
