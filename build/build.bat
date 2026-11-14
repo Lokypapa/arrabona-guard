@@ -5,7 +5,7 @@ rem    1) PyInstaller: dist\Arrabona Guard.exe
 rem    2) Inno Setup:  release\ArrabonaGuard_Setup_VERZIO.exe
 rem    3) release\SHA256SUMS.txt  (a frissito ezzel ellenoriz)
 rem  Futtatas: dupla kattintas, vagy a repo mappajabol:  build\build.bat
-rem  Kell hozza: Python 3.11+  es  Inno Setup 6  (https://jrsoftware.org/isdl.php)
+rem  Kell hozza: Python 3.11+  es  Inno Setup 7 (vagy 6)  (https://jrsoftware.org/isdl.php)
 rem ============================================================
 setlocal
 cd /d "%~dp0.."
@@ -34,11 +34,10 @@ python -m PyInstaller --noconfirm --clean --onefile --windowed --uac-admin ^
     arrabona_guard.py || goto :hiba
 
 echo [3/4] Inno Setup...
-set ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe
-if not exist "%ISCC%" set ISCC=%ProgramFiles%\Inno Setup 6\ISCC.exe
-if not exist "%ISCC%" set ISCC=%LocalAppData%\Programs\Inno Setup 6\ISCC.exe
+set ISCC=
+for /f "delims=" %%i in ('python build\iscc_keres.py') do set "ISCC=%%i"
 if not exist "%ISCC%" (
-    echo [HIBA] Nincs telepitve az Inno Setup 6: https://jrsoftware.org/isdl.php
+    echo [HIBA] Nincs telepitve az Inno Setup 7 vagy 6: https://jrsoftware.org/isdl.php
     goto :hiba
 )
 if exist release rmdir /s /q release
