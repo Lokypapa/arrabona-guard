@@ -46,12 +46,18 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "autostart"; Description: "Indítás automatikusan bejelentkezéskor, rendszergazdai joggal (ajánlott)"; GroupDescription: "Indítás:"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
+[InstallDelete]
+; [v2.18.2] mappas build: a regi verzio konyvtarai ne keveredjenek az ujakkal
+Type: filesandordirs; Name: "{app}\_internal"
+
 [Files]
-Source: "..\dist\{#AppExe}"; DestDir: "{app}"; Flags: ignoreversion
+; [v2.18.2] "onedir" build: Arrabona Guard.exe + _internal mappa (a vírusirtók kevésbé gyanakszanak rá)
+Source: "..\dist\Arrabona Guard\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\assets\logo_tray.png"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\assets\logo_zold_uj.png"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "feladat.ps1"; DestDir: "{app}\tools"; Flags: ignoreversion
 Source: "eltavolitas.ps1"; DestDir: "{app}\tools"; Flags: ignoreversion
+Source: "watchdog.vbs"; DestDir: "{app}\tools"; Flags: ignoreversion
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
 
@@ -60,8 +66,11 @@ Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 [Run]
-; Automatikus inditas: utemezett feladat (rendszergazdai jog, UAC-ablak nelkul, akkumulatorrol is, idokorlat nelkul)
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\tools\feladat.ps1"" -Exe ""{app}\{#AppExe}"" -User ""{username}"""; Flags: runhidden waituntilterminated; Tasks: autostart; StatusMsg: "Automatikus indítás beállítása..."
+; Utemezett feladatok: AutoStart (bejelentkezeskor, rendszergazdai joggal, UAC nelkul) + Watchdog (orkutya).
+; [v2.18.2] Mindig letrejonnek (csak a telepito hozza letre oket); ha az automatikus inditas nincs
+; bejelolve, az AutoStart kikapcsolt allapotban jon letre - a Guardban a pipa be tudja kapcsolni.
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\tools\feladat.ps1"" -Exe ""{app}\{#AppExe}"" -User ""{username}"" -AutoStart 1"; Flags: runhidden waituntilterminated; Tasks: autostart; StatusMsg: "Ütemezett feladatok beállítása..."
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\tools\feladat.ps1"" -Exe ""{app}\{#AppExe}"" -User ""{username}"" -AutoStart 0"; Flags: runhidden waituntilterminated; Tasks: not autostart; StatusMsg: "Ütemezett feladatok beállítása..."
 ; A Guard inditasa a telepites vegen (csendes frissiteskor is)
 Filename: "{app}\{#AppExe}"; Description: "Arrabona Guard indítása"; Flags: nowait postinstall
 

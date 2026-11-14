@@ -1,7 +1,7 @@
 @echo off
 rem ============================================================
 rem  Arrabona Guard - kiadas keszitese
-rem    1) PyInstaller: dist\Arrabona Guard.exe
+rem    1) PyInstaller: dist\Arrabona Guard\  (mappa: exe + _internal)
 rem    2) Inno Setup:  release\ArrabonaGuard_Setup_VERZIO.exe
 rem    3) release\SHA256SUMS.txt  (a frissito ezzel ellenoriz)
 rem  Futtatas: dupla kattintas, vagy a repo mappajabol:  build\build.bat
@@ -28,7 +28,7 @@ set ICON=
 if exist "assets\logo_zold_uj.png" set ICON=--icon "assets\logo_zold_uj.png"
 if exist "assets\logo_zold.ico" set ICON=--icon "assets\logo_zold.ico"
 if not exist "assets\logo_tray.png" echo [FIGYELEM] assets\logo_tray.png hianyzik - a tartalek logot hasznalja.
-python -m PyInstaller --noconfirm --clean --onefile --windowed --uac-admin ^
+python -m PyInstaller --noconfirm --clean --onedir --windowed --uac-admin ^
     --name "Arrabona Guard" %ICON% ^
     --hidden-import pystray._win32 ^
     arrabona_guard.py || goto :hiba
