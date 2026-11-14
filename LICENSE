@@ -1,21 +1,54 @@
-MIT License
+﻿Arrabona Guard
+Copyright (c) 2026 Lokypapa. Minden jog fenntartva. / All rights reserved.
 
-Copyright (c) 2026 Lokypapa
+============================================================
+MAGYAR
+============================================================
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. A program (Arrabona Guard) és a forráskódja Lokypapa szellemi tulajdona.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. ENGEDÉLYEZETT: a hivatalos kiadások (https://github.com/Lokypapa/arrabona-guard/releases)
+   ingyenes letöltése, telepítése és használata saját számítógépen, magáncélra vagy
+   munkahelyen. A forráskód megtekinthető, hogy bárki ellenőrizhesse, mit csinál a program.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+3. TILOS a szerző előzetes írásos engedélye nélkül:
+   - a forráskód vagy annak bármely részének másolása, felhasználása más programban;
+   - a program vagy a forráskód módosítása, átdolgozása, származékos mű készítése;
+   - a program vagy a forráskód terjesztése, újra közzététele, eladása, bérbe adása,
+     más név alatt való kiadása;
+   - a szerzői jogi és a licenc-megjegyzések eltávolítása.
+   A GitHub felhasználási feltételei szerint a nyilvános tárhely a GitHubon belül
+   megtekinthető és "forkolható"; ez nem ad jogot a fenti tevékenységekre.
+
+4. Engedélyt kérni, hibát jelezni: https://github.com/Lokypapa/arrabona-guard/issues
+
+5. A programot "ahogy van" alapon, mindenféle garancia nélkül adjuk. A szerző nem
+   felel a használatból eredő károkért (pl. adatvesztés, hibás blokkolás, kiesés).
+   A program a Windows Defender mellé készült, nem helyettesíti a vírusirtót.
+
+============================================================
+ENGLISH
+============================================================
+
+1. Arrabona Guard and its source code are the intellectual property of Lokypapa.
+
+2. PERMITTED: downloading, installing and using the official releases
+   (https://github.com/Lokypapa/arrabona-guard/releases) free of charge on your own
+   computers, for personal or workplace use. The source code is published for
+   transparency, so anyone can verify what the program does.
+
+3. NOT PERMITTED without prior written permission from the author:
+   - copying the source code or any part of it, or using it in other software;
+   - modifying or adapting the program or the source code, or creating derivative works;
+   - distributing, republishing, selling, renting or releasing the program or the
+     source code under another name;
+   - removing copyright or license notices.
+   Under GitHub's Terms of Service, the public repository may be viewed and forked
+   within GitHub; this grants no rights to do any of the above.
+
+4. Permission requests and bug reports: https://github.com/Lokypapa/arrabona-guard/issues
+
+5. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. IN NO EVENT SHALL
+   THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE USE
+   OF THE SOFTWARE (e.g. data loss, wrongful blocking, downtime). The software is meant
+   to run alongside Microsoft Defender and does not replace an antivirus.

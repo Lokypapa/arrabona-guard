@@ -1,6 +1,6 @@
 # Arrabona Guard
 
-Ingyenes, nyílt forrású **PC-védelmi program Windowsra**. Figyeli, ha a gépedet támadják. Riaszt, blokkol, és a telefonodra is szól Telegramon.
+Ingyenes **PC-védelmi program Windowsra**, nyilvános forráskóddal. Figyeli, ha a gépedet támadják. Riaszt, blokkol, és a telefonodra is szól Telegramon.
 
 > ⚠ A Windows Defender mellé készült, nem helyette. A Defendert hagyd bekapcsolva: a Guard azzal együttműködik.
 
@@ -74,9 +74,9 @@ A naplók és beállítások helye: `%APPDATA%\ArrabonaGuard`.
 
 Gépház → Alkalmazások → **Arrabona Guard** → Eltávolítás. Ez törli az ütemezett feladatokat, az automatikus indítást és a Guard tűzfal-szabályait. A beállítások és naplók (`%APPDATA%\ArrabonaGuard`) megmaradnak, ezeket kézzel törölheted.
 
-## Fordítás forráskódból (fejlesztőknek)
+## Kiadás készítése (a szerző jegyzete)
 
-Kell hozzá: **Python 3.11+** és **[Inno Setup 6](https://jrsoftware.org/isdl.php)**.
+Kell hozzá: **Python 3.11+** és **[Inno Setup 7](https://jrsoftware.org/isdl.php)** (vagy 6).
 
 ```bat
 build\build.bat
@@ -93,4 +93,9 @@ python arrabona_guard.py
 
 ## Licenc
 
-[MIT](LICENSE). Szabadon használható és módosítható, de garancia nélkül.
+**Minden jog fenntartva** – lásd: [LICENSE](LICENSE).
+
+- A hivatalos kiadások ingyen letölthetők és használhatók.
+- A forráskód azért nyilvános, hogy bárki ellenőrizhesse, mit csinál a program.
+- A kód másolása, módosítása, újra kiadása vagy beépítése más programba csak a szerző írásos engedélyével lehetséges. Engedélyt kérni az [Issues](https://github.com/Lokypapa/arrabona-guard/issues) oldalon lehet.
+- Garancia nélkül.
