@@ -39,7 +39,7 @@ except ImportError:
 # ----------------------- Konstansok -----------------------
 
 APP_NAME = "Arrabona Guard"
-VERSION = "2.18.1"
+VERSION = "2.18.2"
 
 # --- [v2.18.0] Nyilvanos kiadas: GitHub Release-ekbol frissul (arrabona/updater.py) ---
 GITHUB_REPO = "Lokypapa/arrabona-guard"
@@ -67,7 +67,13 @@ WATCHDOG_TASK = "ArrabonaGuard Watchdog"
 DEFENDER_LOG = "Microsoft-Windows-Windows Defender/Operational"
 DEFENDER_EVENTS = ("1116", "1117", "1118", "1119", "5001", "5007", "5010", "5012")
 DEF_SIG_MAX_AGE = 3        # ennyi napnal regebbi definicio = riasztas
-WATCHDOG_VBS = os.path.join(APPDATA_DIR, "watchdog.vbs")
+# [v2.18.2] A telepito a program melle teszi (tools\\watchdog.vbs) es O hozza letre a feladatot is;
+# a regi, APPDATA-ba irt valtozat csak a telepito nelkuli futtatashoz maradt meg.
+_TELEPITETT_VBS = os.path.join(os.path.dirname(os.path.abspath(sys.executable)), "tools", "watchdog.vbs")
+if getattr(sys, "frozen", False) and os.path.isfile(_TELEPITETT_VBS):
+    WATCHDOG_VBS = _TELEPITETT_VBS
+else:
+    WATCHDOG_VBS = os.path.join(APPDATA_DIR, "watchdog.vbs")
 QUIT_FLAG = os.path.join(APPDATA_DIR, "kilepes.flag")        # szandekos kilepes jelzese
 HEARTBEAT_FILE = os.path.join(APPDATA_DIR, "heartbeat.txt")  # utolso eletjel
 
@@ -504,10 +510,10 @@ def autostart_cmd():
     return '"%s" "%s"' % (sys.executable, ENTRY_SCRIPT)
 
 
-# [v2.18.1] Az automatikus inditas utemezett feladattal tortenik (ugyanaz, amit a telepito
-# letrehoz): rendszergazdai joggal indul UAC-ablak nelkul, akkumulatorrol is, idokorlat nelkul.
-# A Run-kulcs a --uac-admin exe-t NEM inditja el (a Windows csendben kihagyja), ezert csak
-# tartalek, ha nincs rendszergazdai jog.
+# [v2.18.2] Az automatikus inditas utemezett feladatat CSAK a telepito hozza letre
+# ("ArrabonaGuard AutoStart": rendszergazdai jog UAC nelkul, akkurol is, idokorlat nelkul).
+# A Guard maga csak ki-/bekapcsolja. Ha a Guard sajat maga hozza letre, a Defender
+# viselkedes-figyeloje "megkapaszkodasnak" (Behavior:Win32/Persistence) nezi es torli.
 AUTOSTART_TASK = "ArrabonaGuard AutoStart"
 
 
@@ -520,108 +526,70 @@ def _run_key_enabled():
         return False
 
 
-def _run_key_set(enable):
+def _run_key_torles():
+    """A regi verziok Run-kulcsa: a --uac-admin exe-t a Windows onnan nem inditja el."""
     try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0,
-                            winreg.KEY_SET_VALUE) as k:
-            if enable:
-                winreg.SetValueEx(k, REG_NAME, 0, winreg.REG_SZ, autostart_cmd())
-            else:
-                try:
-                    winreg.DeleteValue(k, REG_NAME)
-                except FileNotFoundError:
-                    pass
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE) as k:
+            winreg.DeleteValue(k, REG_NAME)
         return True
     except OSError:
         return False
 
 
-_AUTOSTART_CACHE = [0.0, False]
+_AUTOSTART_CACHE = [0.0, None]   # (ido, None = nincs feladat / True / False)
+
+
+def autostart_task_state(friss=False):
+    """None = nincs ilyen feladat, True = bekapcsolva, False = kikapcsolva. 60 mp-ig gyorsitotarazva."""
+    if not friss and time.time() - _AUTOSTART_CACHE[0] < 60:
+        return _AUTOSTART_CACHE[1]
+    allapot = None
+    try:
+        r = subprocess.run(["schtasks", "/query", "/tn", AUTOSTART_TASK, "/xml"],
+                           capture_output=True, timeout=15)
+        if r.returncode == 0:
+            xml = dec_ki(r.stdout or b"")
+            import re as _re
+            m = _re.search(r"<Settings>.*?</Settings>", xml, _re.S)
+            beall = m.group(0) if m else ""
+            # a <Settings> kozvetlen <Enabled> eleme (a triggereke kulon van)
+            m2 = _re.search(r"<Enabled>\s*(true|false)\s*</Enabled>", _re.sub(r"<IdleSettings>.*?</IdleSettings>", "", beall, flags=_re.S))
+            allapot = not (m2 and m2.group(1) == "false")
+    except Exception:
+        allapot = None
+    _AUTOSTART_CACHE[0], _AUTOSTART_CACHE[1] = time.time(), allapot
+    return allapot
 
 
 def autostart_task_exists(friss=False):
-    # a felulet surun kerdezi: 60 mp-ig gyorsitotarazva
-    if not friss and time.time() - _AUTOSTART_CACHE[0] < 60:
-        return _AUTOSTART_CACHE[1]
-    try:
-        r = subprocess.run(["schtasks", "/query", "/tn", AUTOSTART_TASK],
-                           capture_output=True, timeout=15)
-        van = r.returncode == 0
-    except Exception:
-        van = False
-    _AUTOSTART_CACHE[0], _AUTOSTART_CACHE[1] = time.time(), van
-    return van
-
-
-def _xml(x):
-    return (str(x).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            .replace('"', "&quot;"))
-
-
-def _autostart_task_create():
-    felh = os.environ.get("USERNAME", "")
-    dom = os.environ.get("USERDOMAIN", "")
-    uid = ("%s\\%s" % (dom, felh)) if dom else felh
-    if getattr(sys, "frozen", False):
-        cmd, args = sys.executable, ""
-    else:
-        cmd, args = sys.executable, '"%s"' % ENTRY_SCRIPT
-    xml = (
-        '<?xml version="1.0" encoding="UTF-16"?>\n'
-        '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">\n'
-        '  <RegistrationInfo><Description>Arrabona Guard inditasa bejelentkezeskor</Description></RegistrationInfo>\n'
-        '  <Triggers><LogonTrigger><Enabled>true</Enabled><UserId>%s</UserId><Delay>PT20S</Delay></LogonTrigger></Triggers>\n'
-        '  <Principals><Principal id="Author"><UserId>%s</UserId><LogonType>InteractiveToken</LogonType>'
-        '<RunLevel>HighestAvailable</RunLevel></Principal></Principals>\n'
-        '  <Settings><MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>'
-        '<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>'
-        '<StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>'
-        '<ExecutionTimeLimit>PT0S</ExecutionTimeLimit><StartWhenAvailable>true</StartWhenAvailable>'
-        '<Enabled>true</Enabled></Settings>\n'
-        '  <Actions Context="Author"><Exec><Command>%s</Command>%s'
-        '<WorkingDirectory>%s</WorkingDirectory></Exec></Actions>\n'
-        '</Task>\n' % (_xml(uid), _xml(uid), _xml(cmd),
-                        ("<Arguments>%s</Arguments>" % _xml(args)) if args else "",
-                        _xml(os.path.dirname(cmd))))
-    tmp = os.path.join(APPDATA_DIR, "autostart_feladat.xml")
-    try:
-        os.makedirs(APPDATA_DIR, exist_ok=True)
-        with open(tmp, "w", encoding="utf-16") as f:
-            f.write(xml)
-        r = subprocess.run(["schtasks", "/create", "/tn", AUTOSTART_TASK, "/xml", tmp, "/f"],
-                           capture_output=True, timeout=20)
-        return r.returncode == 0
-    except Exception:
-        return False
-    finally:
-        try:
-            os.remove(tmp)
-        except OSError:
-            pass
+    return autostart_task_state(friss) is not None
 
 
 def autostart_enabled():
-    return autostart_task_exists() or _run_key_enabled()
+    st = autostart_task_state()
+    if st is None:
+        return _run_key_enabled()
+    return st
 
 
 def autostart_set(enable):
-    if is_admin():
-        if enable:
-            ok = _autostart_task_create()
-            autostart_task_exists(friss=True)
-            if ok:
-                _run_key_set(False)     # ne induljon ketszer / ne maradjon regi utvonal
-                return True
-            return _run_key_set(True)
-        try:
-            subprocess.run(["schtasks", "/delete", "/tn", AUTOSTART_TASK, "/f"],
-                           capture_output=True, timeout=15)
-        except Exception:
-            pass
-        _run_key_set(False)
-        return not autostart_task_exists(friss=True)
-    # rendszergazdai jog nelkul csak a Run-kulcs allithato
-    return _run_key_set(enable)
+    """A telepito altal letrehozott feladat ki-/bekapcsolasa. False, ha nincs feladat
+    (ilyenkor a telepito ujrafuttatasa allitja helyre)."""
+    if autostart_task_state(friss=True) is None:
+        if not enable:
+            _run_key_torles()
+            return True
+        return False
+    try:
+        r = subprocess.run(["schtasks", "/change", "/tn", AUTOSTART_TASK,
+                            "/ENABLE" if enable else "/DISABLE"], capture_output=True, timeout=15)
+        ok = r.returncode == 0
+    except Exception:
+        ok = False
+    if ok:
+        _run_key_torles()
+    autostart_task_state(friss=True)
+    return ok
 
 
 # ----------------------- Tűzfal napló -----------------------

@@ -761,7 +761,16 @@ class GuardApp:
                          ("BE" if self.auto_var.get() else "KI"), "success")
         else:
             self.auto_var.set(autostart_enabled())
-            self.add_log("Nem sikerült állítani az auto-indítást.", "warning")
+            # [v2.18.2] a feladatot csak a telepito hozza letre
+            self.add_log("Nem sikerült állítani az auto-indítást: az ütemezett feladat hiányzik - "
+                         "futtasd újra az Arrabona Guard telepítőjét.", "warning")
+            try:
+                import tkinter.messagebox as mb
+                mb.showwarning(APP_NAME, "Az automatikus indítás feladata hiányzik.\n\n"
+                               "Futtasd újra az Arrabona Guard telepítőjét (a beállításaid megmaradnak), "
+                               "az létrehozza.")
+            except Exception:
+                pass
 
     # ---- felugró értesítés (toast) ----
 

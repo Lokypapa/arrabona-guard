@@ -60,37 +60,11 @@ def watchdog_task_exists():
 
 
 def watchdog_install(exe=None):
-    """VBS (ujra)irasa + az utemezett feladat letrehozasa, ha hianyzik.
-    Visszateres: (ok, uj_feladat_jott_letre)."""
-    exe = exe or sys.executable
-    try:
-        os.makedirs(APPDATA_DIR, exist_ok=True)
-        tartalom = watchdog_vbs_text(exe)
-        regi = ""
-        try:
-            with open(WATCHDOG_VBS, "r", encoding="utf-8", errors="ignore") as f:
-                regi = f.read()
-        except OSError:
-            pass
-        if regi.replace("\r\n", "\n") != tartalom.replace("\r\n", "\n"):
-            # ANSI (cp1250) kodolas: a wscript nem szereti a BOM nelkuli UTF-8-at
-            with open(WATCHDOG_VBS, "w", encoding="cp1250", errors="replace", newline="") as f:
-                f.write(tartalom)
-    except Exception as e:
-        log_line("[ORKUTYA] VBS irasi hiba: %s" % e)
-        return (False, False)
-    if watchdog_task_exists():
-        return (True, False)
-    try:
-        r = _schtasks(["/create", "/tn", WATCHDOG_TASK,
-                       "/tr", 'wscript.exe //B //Nologo "%s"' % WATCHDOG_VBS,
-                       "/sc", "minute", "/mo", "2", "/rl", "highest", "/f"])
-        if r.returncode == 0:
-            return (True, True)
-        log_line("[ORKUTYA] feladat letrehozasa SIKERTELEN (kod %s)" % r.returncode)
-    except Exception as e:
-        log_line("[ORKUTYA] schtasks hiba: %s" % e)
-    return (False, False)
+    """[v2.18.2] Az orkutya feladatat es a watchdog.vbs-t a TELEPITO hozza letre
+    (tools\\watchdog.vbs). A Guard maga mar nem ir feladatot / VBS-t: aláíratlan programtol
+    ez a Defender szemeben "megkapaszkodas" (Behavior:Win32/Persistence), es torli az exe-t.
+    Visszateres: (megvan_a_feladat, False)."""
+    return (watchdog_task_exists(), False)
 
 
 def quit_flag_set():
@@ -132,30 +106,32 @@ class WatchdogMixin(object):
     egymast es a GuardCore tobbi reszet is elerik."""
 
     def _watchdog_check(self):
-        """[v1.9.5] Az orkutya feladat meglete. Elso alkalommal csendben
-        telepiti; ha kesobb hianyzik (valaki torolte), riaszt es visszaallitja."""
+        """[v1.9.5 / v2.18.2] Az orkutya feladat meglete. A feladatot a telepito hozza letre;
+        ha hianyzik (vagy kesobb eltunik - valaki torolte), riaszt, es a telepito
+        ujrafuttatasat keri (maga nem allitja vissza, lasd watchdog_install)."""
         if not getattr(sys, "frozen", False):
             self.wd_status = "inaktív (nem exe-ből fut)"
             return
-        if not self.admin:
-            self.wd_status = "nincs admin jog"
-            return
+        try:
+            van, _ = watchdog_install(sys.executable)
+        except Exception as e:
+            van = False
+            log_line("[ORKUTYA] ellenorzesi hiba: %s" % e)
         elso = not getattr(self, "_wd_checked", False)
         self._wd_checked = True
-        try:
-            ok, uj = watchdog_install(sys.executable)
-        except Exception as e:
-            ok, uj = False, False
-            log_line("[ORKUTYA] ellenorzesi hiba: %s" % e)
-        if not ok:
-            self.wd_status = "HIBA (lásd napló)"
+        if van:
+            self._wd_volt = True
+            self._wd_hiany_jelezve = False
+            self.wd_status = "aktív (2 percenként ellenőriz)"
+            if elso:
+                log_line("[ORKUTYA] feladat rendben: %s" % WATCHDOG_TASK)
             return
-        self.wd_status = "aktív (2 percenként ellenőriz)"
+        self.wd_status = "NINCS BEÁLLÍTVA - futtasd újra a telepítőt"
         if elso:
-            log_line("[ORKUTYA] %s: %s" % ("feladat letrehozva" if uj else "feladat rendben",
-                                           WATCHDOG_TASK))
-        elif uj:
-            msg = ("[ORKUTYA] Az orkutya utemezett feladata HIANYZOTT (valaki torolte?) "
-                   "- visszaallitva.")
+            log_line("[ORKUTYA] a(z) '%s' feladat hianyzik - a telepito ujrafuttatasa letrehozza" % WATCHDOG_TASK)
+        if getattr(self, "_wd_volt", False) and not getattr(self, "_wd_hiany_jelezve", False):
+            self._wd_hiany_jelezve = True
+            msg = ("[ORKUTYA] Az orkutya utemezett feladata ELTUNT (valaki torolte?). "
+                   "Visszaallitas: futtasd ujra az Arrabona Guard telepitojet.")
             log_line(msg)
             self.alert("127.0.0.1", msg, always=True)
