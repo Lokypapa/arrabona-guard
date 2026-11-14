@@ -1,0 +1,4 @@
+Ide masold a ket logot (ugyanazok, amik eddig az exe mellett voltak):
+  logo_tray.png      - talca-ikon
+  logo_zold.ico      - az exe ikonja (vagy logo_zold_uj.png)
+Ha hianyoznak, a Guard a beepitett tartalek logot rajzolja.
