@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 # ============================================================
-#  Arrabona Guard v2.18.0  —  G DATA-stílusú Dashboard UI
+#  Arrabona Guard v2.18.1  —  G DATA-stílusú Dashboard UI
+#
+#  v2.18.1: AUTOMATIKUS INDÍTÁS ütemezett feladattal ("ArrabonaGuard AutoStart"): a pipa már ezt
+#           kapcsolja (rendszergazdai jog UAC nélkül, akkuról is, időkorlát nélkül); a régi Run-kulcs
+#           (amit a Windows az admin-exe-nél csendben kihagyott) csak tartalék admin jog nélkül.
+#           HIBANAPLÓ: kezeletlen hibák (felület, háttérszálak) -> hiba_naplo.txt (csak helyben).
+#           NÉVJEGY ablak: verzió, GitHub, frissítés keresése, kiadások, hiba bejelentése, hibanapló.
 #
 #  v2.18.0: NYILVÁNOS KIADÁS - bárki letöltheti (github.com/Lokypapa/arrabona-guard)
 #           (arrabona/updater.py): ÖNFRISSÍTÉS GitHub Release-ből - 6 óránként keres, sáv az
