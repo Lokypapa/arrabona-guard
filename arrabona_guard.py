@@ -1,6 +1,15 @@
 # -*- coding: utf-8 -*-
 # ============================================================
-#  Arrabona Guard v2.18.1  —  G DATA-stílusú Dashboard UI
+#  Arrabona Guard v2.18.2  —  G DATA-stílusú Dashboard UI
+#
+#  v2.18.2: DEFENDER TÉVES RIASZTÁS JAVÍTVA (Behavior:Win32/Persistence.A!ml): az ütemezett feladatokat
+#           (AutoStart + Watchdog) mostantól CSAK a telepítő hozza létre, a Guard soha - az
+#           "Automatikus indítás" pipa csak ki-/bekapcsolja a meglévő feladatot; ha egy feladat
+#           hiányzik, a Guard riaszt és a telepítő újrafuttatását kéri. Az őrkutya szkriptje a
+#           program mellé került (tools\watchdog.vbs), nem az APPDATA-ba.
+#           MAPPÁS BUILD (PyInstaller --onedir): exe + _internal mappa egyetlen önkicsomagoló exe
+#           helyett - a vírusirtók sokkal ritkábban tartják gyanúsnak.
+#           LICENC: minden jog fenntartva (ingyenesen használható; másolás / módosítás csak engedéllyel).
 #
 #  v2.18.1: AUTOMATIKUS INDÍTÁS ütemezett feladattal ("ArrabonaGuard AutoStart"): a pipa már ezt
 #           kapcsolja (rendszergazdai jog UAC nélkül, akkuról is, időkorlát nélkül); a régi Run-kulcs

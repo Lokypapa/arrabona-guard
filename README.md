@@ -35,6 +35,10 @@ Get-FileHash .\ArrabonaGuard_Setup_X.Y.Z.exe -Algorithm SHA256
 
 Az eredménynek egyeznie kell a kiadás `SHA256SUMS.txt` fájljában szereplő értékkel.
 
+### Ha a vírusirtó riaszt
+
+A program aláíratlan, rendszergazdaként fut, és a tűzfalat, a folyamatokat és a Defendert figyeli. Emiatt egy-egy vírusirtó ritkán tévesen gyanúsnak jelölheti, főleg egy új verzió megjelenése utáni első napokban. Ilyenkor jelezd az [Issues](https://github.com/Lokypapa/arrabona-guard/issues) oldalon, és írd meg a felismerés nevét. **Ne kapcsold ki a vírusirtót.**
+
 ## Telegram-értesítések
 
 Első indításkor a Guard felajánlja a beállítást. Később a **📱 Telegram** gombbal vagy a tálca-menüből is elérhető. Minden felhasználó a **saját, ingyenes botját** használja, a varázsló végigvezet rajta:
