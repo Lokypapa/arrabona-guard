@@ -164,6 +164,8 @@ class GuardApp:
         self.root.minsize(760, 420)
         self.root.configure(bg=COLORS['bg'])
         self.root.protocol("WM_DELETE_WINDOW", self.hide_window)
+        # [v2.18.1] gomb- / idozito-hibak a hibanaploba (eddig csak a nem lathato konzolra mentek)
+        self.root.report_callback_exception = lambda t, e, tb: common.hiba_naplozas("felulet", t, e, tb)
         self._build_update_status()
 
         # saját ablakikon (zöldre színezve)
@@ -257,6 +259,7 @@ class GuardApp:
         mkbtn(bar2, "📄 Whitelist megnyitása", lambda: os.startfile(WHITELIST_FILE))
         mkbtn(bar2, "📜 Előzmények", self.show_history)
         mkbtn(bar2, "📱 Telegram", self.open_telegram_setup)   # [v2.18.0]
+        mkbtn(bar2, "ℹ Névjegy", self.show_about)              # [v2.18.1]
 
         self.auto_var = tk.BooleanVar(value=autostart_enabled())
         chk = tk.Checkbutton(bar2, text="Automatikus indítás",
@@ -1544,6 +1547,80 @@ class GuardApp:
                 telegram_setup.felajanlo_ablak(self.root, self.open_telegram_setup)
         except Exception as e:
             self._upd_log("Telegram-varázsló hiba: %s" % e)
+
+    def show_about(self):
+        """[v2.18.1] Nevjegy: verzio, GitHub, frissites keresese, hibanaplo."""
+        import webbrowser
+        from .common import GITHUB_REPO, HIBA_LOG, APPDATA_DIR
+        if getattr(self, "_about_win", None) is not None:
+            try:
+                self._about_win.deiconify()
+                self._about_win.lift()
+                return
+            except Exception:
+                self._about_win = None
+        w = tk.Toplevel(self.root)
+        self._about_win = w
+        w.title("Névjegy - %s" % APP_NAME)
+        w.configure(bg=COLORS['panel'])
+        w.resizable(False, False)
+
+        def _bezar():
+            self._about_win = None
+            w.destroy()
+        w.protocol("WM_DELETE_WINDOW", _bezar)
+        fej = tk.Frame(w, bg=COLORS['brand'])
+        fej.pack(fill=tk.X)
+        try:
+            self._about_logo = ImageTk.PhotoImage(load_icon_image(big=False).resize((48, 48), Image.LANCZOS))
+            tk.Label(fej, image=self._about_logo, bg=COLORS['brand']).pack(side=tk.LEFT, padx=(14, 8), pady=10)
+        except Exception:
+            pass
+        tk.Label(fej, text="%s\nv%s" % (APP_NAME.upper(), VERSION), justify="left",
+                 font=("Segoe UI", 13, "bold"), fg="white", bg=COLORS['brand']).pack(side=tk.LEFT, pady=10)
+        tart = tk.Frame(w, bg=COLORS['panel'])
+        tart.pack(fill=tk.BOTH, padx=18, pady=12)
+
+        def sor(txt, **kw):
+            tk.Label(tart, text=txt, justify="left", anchor="w", wraplength=420,
+                     font=kw.pop("font", ("Segoe UI", 10)), fg=kw.pop("fg", COLORS['text']),
+                     bg=COLORS['panel'], **kw).pack(anchor="w", fill=tk.X, pady=(0, 4))
+        sor("Ingyenes, nyílt forrású PC-védelmi program Windowsra.")
+        sor("Licenc: MIT  -  garancia nélkül, a Windows Defender mellé.", fg=COLORS['text_soft'])
+        link = tk.Label(tart, text="github.com/%s" % GITHUB_REPO, font=("Segoe UI", 10, "underline"),
+                        fg=COLORS['link'], bg=COLORS['panel'], cursor="hand2")
+        link.pack(anchor="w", pady=(4, 2))
+        link.bind("<Button-1>", lambda e: webbrowser.open("https://github.com/%s" % GITHUB_REPO))
+        allapot = tk.Label(tart, text=updater.allapot_szoveg().split("\n", 2)[-1] if updater.UTOLSO_KERESES
+                           else "Frissítés: még nem kereste.", justify="left", anchor="w",
+                           font=("Segoe UI", 9), fg=COLORS['text_soft'], bg=COLORS['panel'])
+        allapot.pack(anchor="w", pady=(6, 10))
+        gombok = tk.Frame(tart, bg=COLORS['panel'])
+        gombok.pack(anchor="w", fill=tk.X)
+
+        def gomb(txt, cmd, fo=False):
+            b = tk.Button(gombok, text=txt, command=cmd, relief=tk.FLAT, cursor="hand2", padx=10, pady=4,
+                          font=("Segoe UI", 9, "bold" if fo else "normal"),
+                          fg="white" if fo else COLORS['text'], bg=COLORS['brand'] if fo else COLORS['panel_head'],
+                          activebackground=COLORS['brand_dark'] if fo else COLORS['divider'])
+            b.pack(side=tk.LEFT, padx=(0, 6))
+            return b
+        gomb("Frissítés keresése", lambda: (_bezar(), self.gh_kereses(kezi=True)), fo=True)
+        gomb("Kiadások", lambda: webbrowser.open("https://github.com/%s/releases" % GITHUB_REPO))
+        gomb("Hiba bejelentése", lambda: webbrowser.open("https://github.com/%s/issues/new" % GITHUB_REPO))
+        gomb("Mappa", lambda: os.startfile(APPDATA_DIR))
+        if os.path.exists(HIBA_LOG) and os.path.getsize(HIBA_LOG) > 0:
+            sor("")
+            sor("⚠ Van bejegyzés a hibanaplóban - hibabejelentéshez csatold (személyes adatot nem tartalmaz, "
+                "de átküldés előtt nézd át):", fg=COLORS['warn'], font=("Segoe UI", 9))
+            tk.Button(tart, text="Hibanapló megnyitása", command=lambda: os.startfile(HIBA_LOG),
+                      relief=tk.FLAT, cursor="hand2", padx=10, pady=3, font=("Segoe UI", 9)).pack(anchor="w")
+        try:
+            w.transient(self.root)
+            w.lift()
+            w.focus_force()
+        except Exception:
+            pass
 
     def open_telegram_setup(self):
         try:

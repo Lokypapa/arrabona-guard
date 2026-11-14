@@ -39,7 +39,7 @@ except ImportError:
 # ----------------------- Konstansok -----------------------
 
 APP_NAME = "Arrabona Guard"
-VERSION = "2.18.0"
+VERSION = "2.18.1"
 
 # --- [v2.18.0] Nyilvanos kiadas: GitHub Release-ekbol frissul (arrabona/updater.py) ---
 GITHUB_REPO = "Lokypapa/arrabona-guard"
@@ -443,6 +443,55 @@ def play_alert_sound():
             pass
 
 
+# ----------------------- [v2.18.1] Hibanapló -----------------------
+# Kezeletlen kivetelek (felulet, hatterszalak) teljes hibauzenete ide kerul, hogy egy
+# felhasznalo hibajelzesehez legyen mibol dolgozni. Csak a gepen marad, sehova nem kuldjuk.
+HIBA_LOG = os.path.join(APPDATA_DIR, "hiba_naplo.txt")
+_HIBA_MAX = 512 * 1024
+_hiba_utolso = {}
+
+
+def hiba_naplozas(forras, exc_type, exc, tb):
+    import traceback
+    try:
+        szoveg = "".join(traceback.format_exception(exc_type, exc, tb))
+        kulcs = (forras, szoveg[-300:])
+        most = time.time()
+        if most - _hiba_utolso.get(kulcs, 0) < 60:     # ugyanaz a hiba percenkent max. 1x
+            return
+        _hiba_utolso[kulcs] = most
+        os.makedirs(APPDATA_DIR, exist_ok=True)
+        if os.path.exists(HIBA_LOG) and os.path.getsize(HIBA_LOG) > _HIBA_MAX:
+            with open(HIBA_LOG, "rb") as f:
+                f.seek(-_HIBA_MAX // 2, 2)
+                maradek = f.read()
+            with open(HIBA_LOG, "wb") as f:
+                f.write(maradek)
+        with open(HIBA_LOG, "a", encoding="utf-8") as f:
+            f.write("===== %s | v%s | %s =====\n%s\n" % (
+                datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), VERSION, forras, szoveg))
+    except Exception:
+        pass
+
+
+def hiba_hookok_be():
+    """sys.excepthook + threading.excepthook: semmi ne vesszen el csendben."""
+    def _fo(t, e, tb):
+        hiba_naplozas("fo szal", t, e, tb)
+        try:
+            sys.__excepthook__(t, e, tb)
+        except Exception:
+            pass
+    sys.excepthook = _fo
+
+    def _szal(args):
+        if args.exc_type is SystemExit:
+            return
+        nev = getattr(args.thread, "name", "?") if args.thread else "?"
+        hiba_naplozas("szal: %s" % nev, args.exc_type, args.exc_value, args.exc_traceback)
+    threading.excepthook = _szal
+
+
 # ----------------------- Auto-indítás -----------------------
 
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
@@ -455,7 +504,14 @@ def autostart_cmd():
     return '"%s" "%s"' % (sys.executable, ENTRY_SCRIPT)
 
 
-def autostart_enabled():
+# [v2.18.1] Az automatikus inditas utemezett feladattal tortenik (ugyanaz, amit a telepito
+# letrehoz): rendszergazdai joggal indul UAC-ablak nelkul, akkumulatorrol is, idokorlat nelkul.
+# A Run-kulcs a --uac-admin exe-t NEM inditja el (a Windows csendben kihagyja), ezert csak
+# tartalek, ha nincs rendszergazdai jog.
+AUTOSTART_TASK = "ArrabonaGuard AutoStart"
+
+
+def _run_key_enabled():
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as k:
             winreg.QueryValueEx(k, REG_NAME)
@@ -464,17 +520,108 @@ def autostart_enabled():
         return False
 
 
-def autostart_set(enable):
+def _run_key_set(enable):
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0,
                             winreg.KEY_SET_VALUE) as k:
             if enable:
                 winreg.SetValueEx(k, REG_NAME, 0, winreg.REG_SZ, autostart_cmd())
             else:
-                winreg.DeleteValue(k, REG_NAME)
+                try:
+                    winreg.DeleteValue(k, REG_NAME)
+                except FileNotFoundError:
+                    pass
         return True
     except OSError:
         return False
+
+
+_AUTOSTART_CACHE = [0.0, False]
+
+
+def autostart_task_exists(friss=False):
+    # a felulet surun kerdezi: 60 mp-ig gyorsitotarazva
+    if not friss and time.time() - _AUTOSTART_CACHE[0] < 60:
+        return _AUTOSTART_CACHE[1]
+    try:
+        r = subprocess.run(["schtasks", "/query", "/tn", AUTOSTART_TASK],
+                           capture_output=True, timeout=15)
+        van = r.returncode == 0
+    except Exception:
+        van = False
+    _AUTOSTART_CACHE[0], _AUTOSTART_CACHE[1] = time.time(), van
+    return van
+
+
+def _xml(x):
+    return (str(x).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            .replace('"', "&quot;"))
+
+
+def _autostart_task_create():
+    felh = os.environ.get("USERNAME", "")
+    dom = os.environ.get("USERDOMAIN", "")
+    uid = ("%s\\%s" % (dom, felh)) if dom else felh
+    if getattr(sys, "frozen", False):
+        cmd, args = sys.executable, ""
+    else:
+        cmd, args = sys.executable, '"%s"' % ENTRY_SCRIPT
+    xml = (
+        '<?xml version="1.0" encoding="UTF-16"?>\n'
+        '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">\n'
+        '  <RegistrationInfo><Description>Arrabona Guard inditasa bejelentkezeskor</Description></RegistrationInfo>\n'
+        '  <Triggers><LogonTrigger><Enabled>true</Enabled><UserId>%s</UserId><Delay>PT20S</Delay></LogonTrigger></Triggers>\n'
+        '  <Principals><Principal id="Author"><UserId>%s</UserId><LogonType>InteractiveToken</LogonType>'
+        '<RunLevel>HighestAvailable</RunLevel></Principal></Principals>\n'
+        '  <Settings><MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>'
+        '<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>'
+        '<StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>'
+        '<ExecutionTimeLimit>PT0S</ExecutionTimeLimit><StartWhenAvailable>true</StartWhenAvailable>'
+        '<Enabled>true</Enabled></Settings>\n'
+        '  <Actions Context="Author"><Exec><Command>%s</Command>%s'
+        '<WorkingDirectory>%s</WorkingDirectory></Exec></Actions>\n'
+        '</Task>\n' % (_xml(uid), _xml(uid), _xml(cmd),
+                        ("<Arguments>%s</Arguments>" % _xml(args)) if args else "",
+                        _xml(os.path.dirname(cmd))))
+    tmp = os.path.join(APPDATA_DIR, "autostart_feladat.xml")
+    try:
+        os.makedirs(APPDATA_DIR, exist_ok=True)
+        with open(tmp, "w", encoding="utf-16") as f:
+            f.write(xml)
+        r = subprocess.run(["schtasks", "/create", "/tn", AUTOSTART_TASK, "/xml", tmp, "/f"],
+                           capture_output=True, timeout=20)
+        return r.returncode == 0
+    except Exception:
+        return False
+    finally:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+
+
+def autostart_enabled():
+    return autostart_task_exists() or _run_key_enabled()
+
+
+def autostart_set(enable):
+    if is_admin():
+        if enable:
+            ok = _autostart_task_create()
+            autostart_task_exists(friss=True)
+            if ok:
+                _run_key_set(False)     # ne induljon ketszer / ne maradjon regi utvonal
+                return True
+            return _run_key_set(True)
+        try:
+            subprocess.run(["schtasks", "/delete", "/tn", AUTOSTART_TASK, "/f"],
+                           capture_output=True, timeout=15)
+        except Exception:
+            pass
+        _run_key_set(False)
+        return not autostart_task_exists(friss=True)
+    # rendszergazdai jog nelkul csak a Run-kulcs allithato
+    return _run_key_set(enable)
 
 
 # ----------------------- Tűzfal napló -----------------------

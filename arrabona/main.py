@@ -69,6 +69,7 @@ def main():
             pass
         return
     ensure_appdata()
+    common.hiba_hookok_be()   # [v2.18.1] kezeletlen hibak -> hiba_naplo.txt
     threading.Thread(target=_regi_peldany_le, daemon=True).start()
     # [v1.9.5] elindultunk -> a korabbi szandekos kilepes jelzese torolheto
     quit_flag_clear()
