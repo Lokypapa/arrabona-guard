@@ -42,6 +42,7 @@ from .watchdog import (quit_flag_set)
 from .instance import (acquire_single_instance, mark_restart, release_single_instance)
 from . import updater          # [v2.18.0] GitHub-frissites
 from . import telegram_setup   # [v2.18.0] Telegram-beallito varazslo
+from . import pass_inditas     # [v2.19.0] Arrabona Pass inditasa
 
 # ------------------------- Ikon -------------------------
 
@@ -186,6 +187,14 @@ class GuardApp:
                                                                      padx=(0, 10))
         tk.Label(bl, text=APP_NAME.upper(), font=("Segoe UI", 15, "bold"),
                  fg='white', bg=COLORS['brand']).pack(side=tk.LEFT)
+
+        # [v2.19.0] Arrabona Pass inditasa (jobb felul, a zold csikon)
+        pass_btn = tk.Button(brand, text="🔑  Arrabona Pass", command=self.open_pass,
+                             font=("Segoe UI", 10, "bold"), fg='white',
+                             bg=COLORS['brand_dark'], activebackground='#176b3b',
+                             activeforeground='white', relief=tk.FLAT, bd=0,
+                             cursor="hand2", padx=14, pady=6)
+        pass_btn.pack(side=tk.RIGHT, padx=16)
 
         # ===== ALSÓ GOMB SOR (fix az ablak alján — mindig látható) =====
         # ===== FRISSITES-JELZO SAV (3. feladat) =====
@@ -1378,6 +1387,7 @@ class GuardApp:
             # [v2.18.0]
             pystray.MenuItem("Frissítés keresése", lambda s: self.root.after(0, lambda: self.gh_kereses(kezi=True))),
             pystray.MenuItem("Telegram beállítása…", lambda s: self.root.after(0, self.open_telegram_setup)),
+            pystray.MenuItem("Arrabona Pass (jelszókezelő)", lambda s: self.root.after(0, self.open_pass)),  # [v2.19.0]
             pystray.MenuItem("Kilépés", _quit),
         )
         import ctypes
@@ -1556,6 +1566,30 @@ class GuardApp:
                 telegram_setup.felajanlo_ablak(self.root, self.open_telegram_setup)
         except Exception as e:
             self._upd_log("Telegram-varázsló hiba: %s" % e)
+
+    def open_pass(self):
+        """[v2.19.0] Arrabona Pass (jelszokezelo) inditasa - kulon programkent."""
+        import tkinter.messagebox as mb
+        from tkinter import filedialog
+        p = pass_inditas.keres()
+        if not p:
+            if not mb.askyesno(APP_NAME, "Nem találom az Arrabona Pass programot.\n\n"
+                               "Megmutatod, hol van?\n(Arrabona Pass.exe vagy arrabona_pass.py)",
+                               parent=self.root):
+                return
+            p = filedialog.askopenfilename(
+                parent=self.root, title="Hol van az Arrabona Pass?",
+                filetypes=[("Arrabona Pass", "*.exe *.py"), ("Minden fájl", "*.*")])
+            if not p:
+                return
+            p = os.path.normpath(p)
+            pass_inditas.mentes(p)
+        try:
+            pass_inditas.indit(p)
+            self.add_log("Arrabona Pass elindítva.")
+        except Exception as ex:
+            mb.showerror(APP_NAME, "Nem sikerült elindítani az Arrabona Passt:\n%s" % ex,
+                         parent=self.root)
 
     def show_about(self):
         """[v2.18.1] Nevjegy: verzio, GitHub, frissites keresese, hibanaplo."""

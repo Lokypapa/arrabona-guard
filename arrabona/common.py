@@ -39,7 +39,7 @@ except ImportError:
 # ----------------------- Konstansok -----------------------
 
 APP_NAME = "Arrabona Guard"
-VERSION = "2.18.2"
+VERSION = "2.19.0"
 
 # --- [v2.18.0] Nyilvanos kiadas: GitHub Release-ekbol frissul (arrabona/updater.py) ---
 GITHUB_REPO = "Lokypapa/arrabona-guard"
