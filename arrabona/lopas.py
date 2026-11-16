@@ -15,6 +15,11 @@ olvasta oket (4663-as esemeny a Biztonsagi naplobol: PONTOSAN melyik program).
      Opera GX, Exodus es Electrum tarca, FileZilla). Ezekhez ember es normal
      program nem nyul - aki megis olvassa, az szinte biztosan adatlopo.
 
+  3) [v2.20.0] ARRABONA PASS: a jelszotrezor (vault.apv, .bak, hello.json) es a
+     biztonsagi mentesek. Csak maga az Arrabona Pass olvashatja oket - ha mas
+     program nyul hozzajuk, ugyanugy riaszt (es felfuggeszti), mint a bongeszoknel.
+     A mappakra oroklodo naplozas kerul, igy a Pass mentesei utan is ervenyes marad.
+
 Teendo (infolopas.txt): AKCIO FELFUGGESZT (alap) / LEALLIT / RIASZT,
 CSALIK BE/KI, VALODI BE/KI, KIVETEL <reszlet>.
 Rendszergazdai jog kell hozza (naplozasi hazirend + SACL).
@@ -98,8 +103,90 @@ _PS_SACL = ("$ErrorActionPreference='Stop';[Console]::OutputEncoding=[Text.Encod
             "catch{$o+=('hiba|'+$p+'|'+$_.Exception.Message)}};$o -join [Environment]::NewLine")
 
 
+# [v2.20.0] mappara: oroklodo olvasas-naplozas (csak a benne levo fajlokra, a mappara nem)
+_PS_SACL_MAPPA = ("$ErrorActionPreference='Stop';[Console]::OutputEncoding=[Text.Encoding]::UTF8;"
+            "$l=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('%s'))|ConvertFrom-Json;"
+            "$sid=New-Object System.Security.Principal.SecurityIdentifier('S-1-1-0');$o=@();"
+            "$inh=[System.Security.AccessControl.InheritanceFlags]'ContainerInherit,ObjectInherit';"
+            "$prop=[System.Security.AccessControl.PropagationFlags]::InheritOnly;"
+            "foreach($p in @($l)){try{$a=Get-Acl -LiteralPath $p -Audit;$van=$false;"
+            "foreach($r in $a.GetAuditRules($true,$false,[System.Security.Principal.SecurityIdentifier])){"
+            "if($r.IdentityReference.Value -eq 'S-1-1-0' -and (([int]$r.FileSystemRights) -band 1) -and "
+            "(([int]$r.InheritanceFlags) -band 2)){$van=$true}};"
+            "if(-not $van){$r=New-Object System.Security.AccessControl.FileSystemAuditRule($sid,"
+            "[System.Security.AccessControl.FileSystemRights]::ReadData,$inh,$prop,"
+            "[System.Security.AccessControl.AuditFlags]::Success);"
+            "$a.AddAuditRule($r);[System.IO.Directory]::SetAccessControl($p,$a);$o+=('uj|'+$p)}else{$o+=('van|'+$p)}}"
+            "catch{$o+=('hiba|'+$p+'|'+$_.Exception.Message)}};$o -join [Environment]::NewLine")
+
+PASS_MAPPA = os.path.join(ROAMING, "ArrabonaPass")
+_PASS_FAJLOK = (("vault.apv", "a jelszótrezor"), ("vault.apv.bak", "a trezor előző állapota"),
+                ("hello.json", "a Windows Hello-kulcs (titkosítva)"))
+_PYTHON_EXE = {"python.exe", "pythonw.exe", "py.exe", "pyw.exe"}
+
+
 def _norm(p):
     return os.path.normcase(os.path.normpath(p or ""))
+
+
+def pass_mentes_mappa():
+    """Az Arrabona Pass biztonsagi menteseinek mappaja (a Pass beallitasaibol)."""
+    mappa = ""
+    try:
+        with open(os.path.join(PASS_MAPPA, "beallitasok.json"), "r", encoding="utf-8") as f:
+            d = _json.load(f)
+        if d.get("backup_enabled", True) is False:
+            return ""
+        mappa = d.get("backup_folder") or ""
+    except Exception:
+        pass
+    if not mappa:
+        docs = os.path.join(os.path.expanduser("~"), "Documents")
+        mappa = os.path.join(docs if os.path.isdir(docs) else os.path.expanduser("~"),
+                             "Arrabona Pass mentesek")
+    return mappa if os.path.isdir(mappa) else ""
+
+
+def pass_mappak():
+    return [m for m in (PASS_MAPPA if os.path.isdir(PASS_MAPPA) else "", pass_mentes_mappa()) if m]
+
+
+def pass_celpontok():
+    """{normalt_ut: (ut, leiras)} az Arrabona Pass fajljai."""
+    out = {}
+    for fn, leiras in _PASS_FAJLOK:
+        p = os.path.join(PASS_MAPPA, fn)
+        if os.path.isfile(p):
+            out[_norm(p)] = (p, "Arrabona Pass: %s (%s)" % (fn, leiras))
+    m = pass_mentes_mappa()
+    if m:
+        try:
+            for fn in os.listdir(m):
+                if fn.lower().startswith("arrabona_pass_") and fn.lower().endswith(".apv"):
+                    p = os.path.join(m, fn)
+                    out[_norm(p)] = (p, "Arrabona Pass: biztonsági mentés (%s)" % fn)
+        except OSError:
+            pass
+    return out
+
+
+def _arrabona_pass_folyamat(pid, exe):
+    """Maga az Arrabona Pass olvassa-e (telepitett exe, vagy forrasbol: python arrabona_pass.py)."""
+    nev = os.path.basename(exe or "").lower()
+    if nev == "arrabona pass.exe":
+        try:
+            from . import pass_inditas
+            ismert = pass_inditas.keres() or ""
+        except Exception:
+            ismert = ""
+        return _megbizhato_hely(exe) or (ismert and _norm(ismert) == _norm(exe))
+    if nev in _PYTHON_EXE:
+        try:
+            import psutil
+            return any("arrabona_pass" in (a or "").lower() for a in psutil.Process(pid).cmdline())
+        except Exception:
+            return False
+    return False
 
 
 def lopas_cfg():
@@ -164,6 +251,7 @@ def valodi_celpontok():
                 add(os.path.join(_FIREFOX, d, fn), "Firefox / %s: %s (%s)" % (d.split(".")[-1], fn, leiras))
     except OSError:
         pass
+    out.update(pass_celpontok())   # [v2.20.0]
     return out
 
 
@@ -357,6 +445,22 @@ class LopasMixin(object):
                 log_line("[INFOLOPAS] jelolesi hiba: %s" % e)
         return uj, van, hiba
 
+    def _lp_sacl_mappa(self, mappak):
+        """[v2.20.0] Oroklodo olvasas-naplozas mappakra (az ujonnan letrejovo fajlokra is)."""
+        if not mappak:
+            return
+        b64 = base64.b64encode(_json.dumps(mappak).encode("utf-8")).decode("ascii")
+        try:
+            r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", _PS_SACL_MAPPA % b64],
+                               capture_output=True, timeout=60)
+            for ln in dec_ki(r.stdout).splitlines():
+                if ln.startswith("uj|"):
+                    log_line("[INFOLOPAS] Arrabona Pass mappa megjelolve: %s" % ln[3:300])
+                elif ln.startswith("hiba|"):
+                    log_line("[INFOLOPAS] Arrabona Pass mappa jelolese sikertelen: %s" % ln[5:300])
+        except Exception as e:
+            log_line("[INFOLOPAS] Arrabona Pass mappa jelolesi hiba: %s" % e)
+
     def _lp_celpontok_frissit(self):
         cfg = self._lp_cfg
         cel = {}
@@ -367,6 +471,8 @@ class LopasMixin(object):
         elif self._lp_state.get("csalik"):
             self.lopas_csalik_torol()
         uj, van, hiba = self._lp_sacl([p for p, _l, _c in cel.values()])
+        if cfg["VALODI"] == "BE":
+            self._lp_sacl_mappa(pass_mappak())   # [v2.20.0] Arrabona Pass mappai (oroklodo)
         if uj:
             log_line("[INFOLOPAS] %d fajl megjelolve olvasas-naplozasra (%d mar jelolt, %d hiba)" % (uj, van, hiba))
         with self._lp_lock:
@@ -437,10 +543,15 @@ class LopasMixin(object):
             pass
         if any(k in exe.lower() for k in self._lp_cfg["KIVETEL"]):
             return
+        if leiras.startswith("Arrabona Pass") and _arrabona_pass_folyamat(pid, exe):
+            return      # [v2.20.0] maga az Arrabona Pass
         sig = sig_one(exe) if exe and os.path.isfile(exe) else None
         alairt = bool(sig) and sig.get("allapot") == "ok"
         kiado = ((sig or {}).get("kiado") or "").lower()
         bizt_hely = _megbizhato_hely(exe)
+        pass_mentes = leiras.startswith("Arrabona Pass: biztonsági mentés")
+        if pass_mentes and alairt and "microsoft" in kiado:
+            return      # [v2.20.0] OneDrive / Windows-mentes szinkronizalja a mentes-mappat
         if (not csali and alairt and bizt_hely and
                 (nev in _BONGESZO_EXE or any(k in kiado for k in _BONGESZO_KIADO))):
             return      # a bongeszo (vagy a gyartoja) sajat programja
@@ -450,7 +561,7 @@ class LopasMixin(object):
             if nev in _TELEPITVE.get(csomag, ([], set()))[1]:
                 self._lp_csomag_torol(csomag, "a valodi program (%s) hasznalni kezdte" % nev)
                 return
-        szint = 2 if (alairt and bizt_hely) else 3
+        szint = 2 if (alairt and (bizt_hely or pass_mentes)) else 3
         kulcs = (pid, _norm(exe), csali)
         most = time.time()
         if most - self._lp_last.get(kulcs, 0.0) < 600:
