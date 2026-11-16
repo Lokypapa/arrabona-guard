@@ -393,6 +393,7 @@ class GuardApp:
         mkcard("upnp", "Router nyitott portjai (UPnP)")  # [v2.16.0]
         mkcard("kiszivargas", "Adatkiszivárgás-figyelés")  # [v2.16.0]
         mkcard("utemezett", "Ütemezett feladatok")     # [v2.17.0]
+        mkcard("passert", "Arrabona Pass értesítések")  # [v2.21.0]
         # a gombsorok a kartyak UTANI sorokba kerulnek (a kartyak szama valtozhat)
         self._card_rows = (card_idx[0] + 1) // 2
         # a kartyasor a nagy allapotpanel FOLE kerul
@@ -1958,6 +1959,13 @@ class GuardApp:
             _utt = getattr(core, "_ut_thread", None)
             set("utemezett", bool(_utt and _utt.is_alive()) and core.ut_ok() is not False
                 and not str(getattr(core, "ut_status", "")).startswith(("nem", "kikapcsolva")), core.ut_summary())
+        except Exception:
+            pass
+        # [v2.21.0] Arrabona Pass ertesitesek
+        try:
+            _pet = getattr(core, "_pe_thread", None)
+            set("passert", bool(_pet and _pet.is_alive()) and
+                str(getattr(core, "pass_status", "")).startswith("aktív"), core.pass_summary())
         except Exception:
             pass
         # [v2.9.0] jatek mod

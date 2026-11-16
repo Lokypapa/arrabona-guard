@@ -53,12 +53,13 @@ from .frissites import (FrissitesMixin)
 from .upnp import (UpnpMixin)
 from .kiszivargas import (KiszivargasMixin)
 from .utemezett import (UtemezettMixin)
+from .passert import (PassErtesitesMixin)
 
 class GuardCore(FeedMixin, GeoMixin, HoneypotMixin, LogonMixin, DefenderMixin, OutboundMixin, WatchdogMixin,
                 UsbMixin, HostsMixin, StartupMixin, FixMixin, CsaliMixin,
                 BrowserMixin, LanMixin, NetCfgMixin, GameModeMixin,
                 ExtrasMixin, FolyamatMixin, LopasMixin, VagolapMixin, LetoltesMixin,
-                FrissitesMixin, UpnpMixin, KiszivargasMixin, UtemezettMixin):
+                FrissitesMixin, UpnpMixin, KiszivargasMixin, UtemezettMixin, PassErtesitesMixin):
     def __init__(self, out_queue):
         self.out = out_queue
         tg_poll_start(self)
@@ -180,6 +181,7 @@ class GuardCore(FeedMixin, GeoMixin, HoneypotMixin, LogonMixin, DefenderMixin, O
         self._upnp_stop()
         self._kiszivargas_stop()
         self._utemezett_stop()
+        self._passert_stop()
         self._stop_ev.set()
 
     def alert(self, ip, msg, always=False, gombok=None):
@@ -803,6 +805,10 @@ class GuardCore(FeedMixin, GeoMixin, HoneypotMixin, LogonMixin, DefenderMixin, O
             self._utemezett_start()
         except Exception as e:
             log_line("[UTEMEZETT] inditasi hiba: %s" % e)
+        try:
+            self._passert_start()      # [v2.21.0] Arrabona Pass ertesitesek
+        except Exception as e:
+            log_line("[ARRABONA PASS] inditasi hiba: %s" % e)
         trim_log()
         self.start_honeypot()  # indulaskori naplotakaritas
         fw_ok = enable_fw_logging()

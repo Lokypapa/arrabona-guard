@@ -476,6 +476,16 @@ def _tg_handle(core, tok, cid, text):
         log_line("TG parancs: blokkok")
         _tg_reply(tok, cid, _tg_blokkok_text(core))
         return
+    if text.startswith("/passzar"):
+        # [v2.21.0] Arrabona Pass zarolasa tavolrol
+        log_line("TG parancs: passzar")
+        ok, sz = core.pass_zarol("Telegram parancs")
+        _tg_reply(tok, cid, ("🔒 " if ok else "⚠ ") + sz)
+        return
+    if text.startswith("/pass"):
+        log_line("TG parancs: pass")
+        _tg_reply(tok, cid, core.pass_text())
+        return
     if text.startswith("/status"):
         log_line("TG parancs: status")
         _tg_reply(tok, cid, _tg_status_text(core))
@@ -507,6 +517,7 @@ def _tg_handle(core, tok, cid, text):
                      "/kiszivargas - feltoltes-figyeles (adatlopas)\n"
                      "/feladatok [most] - gyanus utemezett feladatok\n"
                      "/feladattiltas <szam> - feladat letiltasa\n/feladatengedely <szam> - feladat engedelyezese\n"
+                     "/pass - Arrabona Pass esemenyek\n/passzar - Arrabona Pass zarolasa tavolrol\n"
                      "/guardverzio - Guard verzio + uj kiadas keresese\n/guardfrissit - Guard frissitese az uj verziora")
 
 def _guard_frissit_inditas(tok, cid):
@@ -731,6 +742,10 @@ def _tg_callback(core, tok, cid, cq):
         # [v2.18.0] Arrabona Guard frissitese (GitHub Release)
         ok, sz = _guard_frissit_inditas(tok, cid)
         eredm = ("⬆ " if ok else "⚠ ") + sz
+    elif kind == "pl":
+        # [v2.21.0] Arrabona Pass zarolasa
+        ok, sz = core.pass_zarol("Telegram gomb")
+        eredm = ("🔒 " if ok else "⚠ ") + sz
     elif kind == "sf":
         r = core.defender_scan("full")
         eredm = "🛡 Teljes vizsgálat elindítva." if r else "⚠ Már fut egy vizsgálat: %s" % core.def_scan_running
